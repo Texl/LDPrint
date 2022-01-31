@@ -1,33 +1,20 @@
-﻿open System
-open Argu
-open LDPrint.Core
+﻿open LDPrint.Core
+open LDPrint.Cli.CliArguments
 
-let private convertPartLibrary inputPath outputPath outputScale =
-    let partLibrary = inputPath |> PartLibrary.read
-    partLibrary |> PartLibrary.write outputPath outputScale
+let results = parser.ParseCommandLine()
 
-type CliArguments =
-    | [<AltCommandLine("-i")>] Input_Path of partPath : string
-    | [<AltCommandLine("-o")>] Output_Path of outputPath : string
-    | [<AltCommandLine("-s")>] Scale of float
-    interface IArgParserTemplate with
-        member s.Usage =
-            match s with
-            | Input_Path _ -> "Path to part file library input."
-            | Output_Path _ -> "Path to output. (default='./output/')"
-            | Scale _ -> "Output scale. 1 corresponds to actual size, or 1 LDU ~= 0.4mm. (default = 1.)"
+let dryRun = results.Contains(Dry_Run)
+let inputPath = results.GetResult(Input_Path)
+let outputPath = results.GetResult(Output_Path, "output")
+let scale = results.GetResult(Scale, 1m)
 
-let errorHandler =
-    function
-    | ErrorCode.HelpText -> None
-    | _ -> Some ConsoleColor.Red
-    |> ProcessExiter
+try
+    // Read part library
+    let partLibrary = PartLibrary.read scale inputPath
 
-let parser = ArgumentParser.Create(errorHandler = errorHandler)
-let parseResults = parser.ParseCommandLine()
+    // Write part library
+    PartLibrary.asyncWrite dryRun outputPath partLibrary |> Async.RunSynchronously
 
-let conversionResult =
-    let inputPath = parseResults.GetResult(Input_Path)
-    let outputPath = parseResults.GetResult(Output_Path, "output")
-    let outputScale = parseResults.GetResult(Scale, 1.)
-    convertPartLibrary inputPath outputPath outputScale
+    printfn "Success"
+with exn ->
+    printfn $"Error:\n%A{exn}"

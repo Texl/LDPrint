@@ -11,6 +11,7 @@
         <Content Include="ldraw\**\*">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+        <Compile Include="LDrawParser.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
